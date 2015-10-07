@@ -15,7 +15,6 @@ import (
   "path/filepath"
   "runtime"
   "time"
-  "github.com/andlabs/ui"
   "github.com/magiconair/properties"
   "github.com/mitchellh/go-homedir"
 )
@@ -24,7 +23,6 @@ const ARCH_BITS = 32 + int(^uintptr(0)>>63<<5)
 const RisePlayerShutdownURL = "http://localhost:9449/shutdown"
 const RiseCacheShutdownURL = "http://localhost:9494/shutdown"
 
-var window ui.Window
 var config *properties.Properties
 var remoteURLs = []string{ "BrowserURL", "CacheURL", "JavaURL", "PlayerURL" }
 var remoteVersions = []string{ "BrowserVersion", "CacheVersion", "JavaVersion", "PlayerVersion" }
@@ -33,30 +31,7 @@ var destinationDir = []string{ "", "RiseCache", "JRE", "" }
 var channel = "Stable"
 
 func main() {
-  go ui.Do(func() {
-    install := ui.NewButton("Install")
-    cancel := ui.NewButton("Cancel")
-    stack := ui.NewVerticalStack(
-      ui.NewLabel("Welcome to Rise Vision's Player installer"),
-      ui.NewHorizontalStack(install, cancel))
-    window = ui.NewWindow("Install", 400, 300, stack)
-    install.OnClicked(func() {
-      performInstallation()
-    })
-    cancel.OnClicked(func() {
-      ui.Stop()
-    })
-    window.OnClosing(func() bool {
-      ui.Stop()
-      return true
-    })
-    window.Show()
-  })
-
-  err := ui.Go()
-  if err != nil {
-    panic(err)
-  }
+  performInstallation()
 }
 
 func performInstallation() {
@@ -72,7 +47,7 @@ func performInstallation() {
 
     if localVersion != remoteVersion {
       fmt.Println("Downloading: " + config.MustGetString(remoteURLs[idx] + channel))
-      //downloadComponent(remoteURLs[idx] + channel, config)
+      downloadComponent(remoteURLs[idx] + channel, config)
     }
   }
 
