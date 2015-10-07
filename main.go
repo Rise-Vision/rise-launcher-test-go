@@ -47,7 +47,11 @@ func performInstallation() {
 
     if localVersion != remoteVersion {
       fmt.Println("Downloading: " + config.MustGetString(remoteURLs[idx] + channel))
-      downloadComponent(remoteURLs[idx] + channel, config)
+      err := downloadComponent(remoteURLs[idx] + channel, config)
+
+      if err != nil {
+        log.Fatal(err)
+      }
     }
   }
 
@@ -55,6 +59,10 @@ func performInstallation() {
 
   if err != nil {
 
+  }
+
+  if runtime.GOOS != "windows" {
+    destinationDir[2] = ""
   }
 
   for idx, _ := range remoteVersions {
@@ -92,7 +100,14 @@ func performInstallation() {
 }
 
 func startJavaProcess(jarPath string) (error) {
-  javaPath := path.Join(getInstallDir(), "JRE", "bin", "javaw.exe")
+  var javaPath = path.Join(getInstallDir(), "JRE", "bin", "javaw.exe")
+
+  if runtime.GOOS != "windows" {
+    javaPath = path.Join(getInstallDir(), "jre", "bin", "java")
+  }
+
+  fmt.Println(javaPath, "-jar", filepath.FromSlash(path.Join(getInstallDir(), jarPath)))
+
   cmd := exec.Command(javaPath, "-jar", filepath.FromSlash(path.Join(getInstallDir(), jarPath)))
   err := cmd.Start()
 
@@ -155,6 +170,7 @@ func fetchURLContent(url string) ([]byte, error) {
   resp, err := http.Get(url)
 
   if err != nil {
+    log.Fatal(err)
     return nil, err
   }
 
@@ -167,8 +183,11 @@ func downloadComponent(name string, config *properties.Properties) (error) {
   data, err := fetchURLContent(config.MustGetString(name))
 
   if err != nil {
+    log.Fatal(err)
     return err
   }
+
+  os.Remove(getTempFileName(name, config))
 
   return ioutil.WriteFile(getTempFileName(name, config), data, 0755)
 }
@@ -206,13 +225,9 @@ func loadRemoteComponents() (*properties.Properties) {
 }
 
 func fixChromiumDirectoryName() {
-  var dirName = "win32"
-
-  if runtime.GOOS == "linux" {
-    dirName = "linux"
+  if runtime.GOOS == "windows" {
+    os.Rename(path.Join(getInstallDir(), "chrome-win32"), path.Join(getInstallDir(), "chromium"))
   }
-
-  os.Rename(path.Join(getInstallDir(), "chrome-" + dirName), path.Join(getInstallDir(), "chromium"))
 }
 
 func unzip(archive, target string) error {
@@ -233,7 +248,6 @@ func unzip(archive, target string) error {
       os.MkdirAll(filePath, file.Mode())
       continue
     } else {
-      fmt.Println("Creating: " + filePath + " " + path.Dir(filePath))
       os.MkdirAll(path.Dir(filePath), file.Mode())
     }
 
@@ -259,3 +273,4 @@ func unzip(archive, target string) error {
 
   return nil
 }
+
