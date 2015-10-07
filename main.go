@@ -180,16 +180,20 @@ func fetchURLContent(url string) ([]byte, error) {
 }
 
 func downloadComponent(name string, config *properties.Properties) (error) {
-  data, err := fetchURLContent(config.MustGetString(name))
+  out, err := os.Create(getTempFileName(name, config))
+  defer out.Close()
 
+  resp, err := http.Get(config.MustGetString(name))
+  defer resp.Body.Close()
+  
   if err != nil {
     log.Fatal(err)
     return err
   }
 
-  os.Remove(getTempFileName(name, config))
+  _, err = io.Copy(out, resp.Body)
 
-  return ioutil.WriteFile(getTempFileName(name, config), data, 0755)
+  return err
 }
 
 func extractComponent(name string, destinationDir string, config *properties.Properties) {
